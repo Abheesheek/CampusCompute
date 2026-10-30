@@ -1,18 +1,603 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
 #include <errno.h>
+
 #include "job.h"
 #include "scheduler.h"
 #include "cc_features.h"
-static int read_int(const char *prompt,int *out){char line[128],*end;long v;printf("%s",prompt);fflush(stdout);if(!fgets(line,sizeof line,stdin))return -2;if(!strchr(line,'\n')&&!feof(stdin)){int c;while((c=getchar())!='\n'&&c!=EOF){}return -1;}errno=0;char *p=line;while(isspace((unsigned char)*p))p++;if(!*p)return -1;v=strtol(p,&end,10);while(isspace((unsigned char)*end))end++;if(errno||*end||v<INT_MIN||v>INT_MAX)return -1;*out=(int)v;return 0;}
-static void seed(JobManager *m){initialize_job_manager(m);add_job(m,1,0,5,3);add_job(m,2,2,3,1);add_job(m,3,4,2,2);}
-static int run_schedule(JobManager *m,int policy,int quantum,int verbose,double *wait,double *tat){ScheduleResult *r=malloc(sizeof *r);if(!r){perror("malloc");return -1;}int rc=policy==1?schedule_fcfs(m,r):policy==2?schedule_round_robin(m,r,quantum):schedule_priority(m,r);if(rc==0){if(verbose)display_schedule(m,r,policy==1?"FCFS":policy==2?"Round Robin":"Priority (non-preemptive)");if(wait)*wait=r->average_waiting_time;if(tat)*tat=r->average_turnaround_time;}else fprintf(stderr,"Scheduling failed; check job data and timeline limits.\n");free(r);return rc;}
-static void comparison(JobManager *m,int q){if(!m->count){puts("Add jobs first.");return;}puts("Policy | Average Waiting | Average Turnaround");for(int p=1;p<=3;p++){double w,t;if(!run_schedule(m,p,q,0,&w,&t))printf("%s | %.2f | %.2f\n",p==1?"FCFS":p==2?"Round Robin":"Priority",w,t);}reset_jobs(m);}
-static void jobs_menu(JobManager *m){int c;for(;;){puts("\nJob Management: 1 Add  2 Display  3 Reset states  4 Load sample jobs  0 Back");int rc=read_int("Choice: ",&c);if(rc==-2)return;if(rc){puts("Invalid integer.");continue;}if(c==0)return;if(c==2){display_jobs(m);continue;}if(c==3){reset_jobs(m);puts("Job states reset.");continue;}if(c==4){seed(m);continue;}if(c!=1){puts("Invalid menu option.");continue;}int id,a,b,p;if(read_int("Job ID: ",&id)||read_int("Arrival (>=0): ",&a)||read_int("Burst (>0): ",&b)||read_int("Priority (>=0, lower is higher): ",&p)){puts("Invalid input; job not added.");continue;}add_job(m,id,a,b,p);}}
-static void sched_menu(JobManager *m){int c,q=2;for(;;){puts("\nScheduling: 1 FCFS  2 Round Robin  3 Priority  4 Compare  5 Set quantum  0 Back");int rc=read_int("Choice: ",&c);if(rc==-2)return;if(rc){puts("Invalid integer.");continue;}if(c==0)return;if(c==5){int v;if(read_int("Positive quantum: ",&v)||v<=0)puts("Quantum must be positive.");else{q=v;printf("Quantum set to %d\n",q);}continue;}if(c<1||c>4){puts("Invalid menu option.");continue;}if(!m->count){puts("No jobs: add jobs or load sample jobs first.");continue;}if(c==4)comparison(m,q);else{if(c==2)printf("Round Robin quantum: %d\n",q);run_schedule(m,c,q,1,NULL,NULL);}}}
-static void usage(const char *name){printf("Usage: %s [command]\n",name);puts("Commands: help, demo, fcfs, rr [quantum], priority, compare, logger, ipc, banker-safe, banker-unsafe, worker-ok, worker-fail, limit");puts("No command: interactive menu. Scheduling commands use sample jobs J1(0,5,3), J2(2,3,1), J3(4,2,2).");}
-static int run_command(const char *cmd,const char *arg){JobManager m;seed(&m);if(!strcmp(cmd,"fcfs"))return run_schedule(&m,1,2,1,NULL,NULL);if(!strcmp(cmd,"priority"))return run_schedule(&m,3,2,1,NULL,NULL);if(!strcmp(cmd,"rr")){int q=2;if(arg){char *end;long v;errno=0;v=strtol(arg,&end,10);if(errno||*end||v<1||v>INT_MAX){fprintf(stderr,"Invalid quantum.\n");return 1;}q=(int)v;}printf("Round Robin quantum: %d\n",q);return run_schedule(&m,2,q,1,NULL,NULL);}if(!strcmp(cmd,"compare")){comparison(&m,2);return 0;}if(!strcmp(cmd,"logger"))return demo_logger();if(!strcmp(cmd,"ipc"))return demo_ipc();if(!strcmp(cmd,"banker-safe"))return demo_banker(1);if(!strcmp(cmd,"banker-unsafe"))return demo_banker(0);if(!strcmp(cmd,"worker-ok"))return demo_worker(0);if(!strcmp(cmd,"worker-fail"))return demo_worker(1);if(!strcmp(cmd,"limit"))return demo_limit();if(!strcmp(cmd,"demo")){int failed=0;puts("=== Integrated CampusCompute demo ===");comparison(&m,2);failed|=demo_logger()!=0;failed|=demo_ipc()!=0;failed|=demo_banker(1)!=0;failed|=demo_banker(0)!=0;failed|=demo_worker(0)!=0;failed|=demo_worker(1)!=0;failed|=demo_limit()!=0;printf("Integrated summary: %s\n",failed?"one or more demos failed":"all demos returned success");return failed;}return -99;}
-int main(int argc,char **argv){if(argc>1){if(!strcmp(argv[1],"help")||!strcmp(argv[1],"--help")){usage(argv[0]);return 0;}if(argc>3||(argc==3&&strcmp(argv[1],"rr"))){usage(argv[0]);return 2;}int rc=run_command(argv[1],argc==3?argv[2]:NULL);if(rc==-99){fprintf(stderr,"Unknown command: %s\n",argv[1]);usage(argv[0]);return 2;}return rc?1:0;}JobManager m;initialize_job_manager(&m);for(;;){int c;puts("\n=== CAMPUSCOMPUTE ===\n1 Job management\n2 CPU scheduling\n3 Concurrent logger\n4 Shared-memory IPC\n5 Banker's safety algorithm\n6 Worker monitoring\n7 Resource limit\n8 Integrated demo\n0 Exit");int rc=read_int("Choice: ",&c);if(rc==-2){puts("Input closed.");break;}if(rc){puts("Invalid integer.");continue;}switch(c){case 0:return 0;case 1:jobs_menu(&m);break;case 2:sched_menu(&m);break;case 3:demo_logger();break;case 4:demo_ipc();break;case 5:{int v;if(read_int("1 Safe, 2 Unsafe: ",&v)==0&&(v==1||v==2))demo_banker(v==1);else puts("Invalid selection.");break;}case 6:{int v;if(read_int("1 Normal, 2 Simulated failure: ",&v)==0&&(v==1||v==2))demo_worker(v==2);else puts("Invalid selection.");break;}case 7:demo_limit();break;case 8:run_command("demo",NULL);break;default:puts("Invalid menu option.");}}return 0;}
+
+
+/* ============================================================
+   INPUT VALIDATION
+   ============================================================ */
+
+static int read_int(const char *prompt, int *out)
+{
+    char line[128], *end;
+    long v;
+
+    printf("%s", prompt);
+    fflush(stdout);
+
+    if (!fgets(line, sizeof line, stdin))
+    {
+        return -2;
+    }
+
+    if (!strchr(line, '\n') && !feof(stdin))
+    {
+        int c;
+
+        while ((c = getchar()) != '\n' && c != EOF)
+        {
+        }
+
+        return -1;
+    }
+
+    errno = 0;
+
+    char *p = line;
+
+    while (isspace((unsigned char)*p))
+    {
+        p++;
+    }
+
+    if (!*p)
+    {
+        return -1;
+    }
+
+    v = strtol(p, &end, 10);
+
+    while (isspace((unsigned char)*end))
+    {
+        end++;
+    }
+
+    if (errno || *end || v < INT_MIN || v > INT_MAX)
+    {
+        return -1;
+    }
+
+    *out = (int)v;
+
+    return 0;
+}
+
+
+/* ============================================================
+   SAMPLE JOB INITIALIZATION
+   ============================================================ */
+
+static void seed(JobManager *m)
+{
+    initialize_job_manager(m);
+
+    add_job(m, 1, 0, 5, 3);
+    add_job(m, 2, 2, 3, 1);
+    add_job(m, 3, 4, 2, 2);
+}
+
+
+/* ============================================================
+   CPU SCHEDULING EXECUTION
+   ============================================================ */
+
+static int run_schedule(JobManager *m,
+                        int policy,
+                        int quantum,
+                        int verbose,
+                        double *wait,
+                        double *tat)
+{
+    ScheduleResult *r = malloc(sizeof *r);
+
+    if (!r)
+    {
+        perror("malloc");
+        return -1;
+    }
+
+    int rc = policy == 1
+                 ? schedule_fcfs(m, r)
+                 : policy == 2
+                       ? schedule_round_robin(m, r, quantum)
+                       : schedule_priority(m, r);
+
+    if (rc == 0)
+    {
+        if (verbose)
+        {
+            display_schedule(
+                m,
+                r,
+                policy == 1
+                    ? "FCFS"
+                    : policy == 2
+                          ? "Round Robin"
+                          : "Priority (non-preemptive)"
+            );
+        }
+
+        if (wait)
+        {
+            *wait = r->average_waiting_time;
+        }
+
+        if (tat)
+        {
+            *tat = r->average_turnaround_time;
+        }
+    }
+    else
+    {
+        fprintf(stderr,
+                "Scheduling failed; check job data and timeline limits.\n");
+    }
+
+    free(r);
+
+    return rc;
+}
+
+
+/* ============================================================
+   SCHEDULING COMPARISON
+   ============================================================ */
+
+static void comparison(JobManager *m, int q)
+{
+    if (!m->count)
+    {
+        puts("Add jobs first.");
+        return;
+    }
+
+    puts("Policy | Average Waiting | Average Turnaround");
+
+    for (int p = 1; p <= 3; p++)
+    {
+        double w, t;
+
+        if (!run_schedule(m, p, q, 0, &w, &t))
+        {
+            printf("%s | %.2f | %.2f\n",
+                   p == 1
+                       ? "FCFS"
+                       : p == 2
+                             ? "Round Robin"
+                             : "Priority",
+                   w,
+                   t);
+        }
+    }
+
+    reset_jobs(m);
+}
+
+
+/* ============================================================
+   JOB MANAGEMENT MENU
+   ============================================================ */
+
+static void jobs_menu(JobManager *m)
+{
+    int c;
+
+    for (;;)
+    {
+        puts("\nJob Management: 1 Add  2 Display  3 Reset states  4 Load sample jobs  0 Back");
+
+        int rc = read_int("Choice: ", &c);
+
+        if (rc == -2)
+        {
+            return;
+        }
+
+        if (rc)
+        {
+            puts("Invalid integer.");
+            continue;
+        }
+
+        if (c == 0)
+        {
+            return;
+        }
+
+        if (c == 2)
+        {
+            display_jobs(m);
+            continue;
+        }
+
+        if (c == 3)
+        {
+            reset_jobs(m);
+            puts("Job states reset.");
+            continue;
+        }
+
+        if (c == 4)
+        {
+            seed(m);
+            continue;
+        }
+
+        if (c != 1)
+        {
+            puts("Invalid menu option.");
+            continue;
+        }
+
+        int id, a, b, p;
+
+        if (read_int("Job ID: ", &id) ||
+            read_int("Arrival (>=0): ", &a) ||
+            read_int("Burst (>0): ", &b) ||
+            read_int("Priority (>=0, lower is higher): ", &p))
+        {
+            puts("Invalid input; job not added.");
+            continue;
+        }
+
+        add_job(m, id, a, b, p);
+    }
+}
+
+
+/* ============================================================
+   CPU SCHEDULING MENU
+   ============================================================ */
+
+static void sched_menu(JobManager *m)
+{
+    int c, q = 2;
+
+    for (;;)
+    {
+        puts("\nScheduling: 1 FCFS  2 Round Robin  3 Priority  4 Compare  5 Set quantum  0 Back");
+
+        int rc = read_int("Choice: ", &c);
+
+        if (rc == -2)
+        {
+            return;
+        }
+
+        if (rc)
+        {
+            puts("Invalid integer.");
+            continue;
+        }
+
+        if (c == 0)
+        {
+            return;
+        }
+
+        if (c == 5)
+        {
+            int v;
+
+            if (read_int("Positive quantum: ", &v) || v <= 0)
+            {
+                puts("Quantum must be positive.");
+            }
+            else
+            {
+                q = v;
+                printf("Quantum set to %d\n", q);
+            }
+
+            continue;
+        }
+
+        if (c < 1 || c > 4)
+        {
+            puts("Invalid menu option.");
+            continue;
+        }
+
+        if (!m->count)
+        {
+            puts("No jobs: add jobs or load sample jobs first.");
+            continue;
+        }
+
+        if (c == 4)
+        {
+            comparison(m, q);
+        }
+        else
+        {
+            if (c == 2)
+            {
+                printf("Round Robin quantum: %d\n", q);
+            }
+
+            run_schedule(m, c, q, 1, NULL, NULL);
+        }
+    }
+}
+
+
+/* ============================================================
+   COMMAND-LINE HELP
+   ============================================================ */
+
+static void usage(const char *name)
+{
+    printf("Usage: %s [command]\n", name);
+
+    puts("Commands: help, demo, fcfs, rr [quantum], priority, compare, logger, ipc, banker-safe, banker-unsafe, worker-ok, worker-fail, limit");
+
+    puts("No command: interactive menu. Scheduling commands use sample jobs J1(0,5,3), J2(2,3,1), J3(4,2,2).");
+}
+
+
+/* ============================================================
+   COMMAND-LINE COMMAND EXECUTION
+   ============================================================ */
+
+static int run_command(const char *cmd, const char *arg)
+{
+    JobManager m;
+
+    seed(&m);
+
+    if (!strcmp(cmd, "fcfs"))
+    {
+        return run_schedule(&m, 1, 2, 1, NULL, NULL);
+    }
+
+    if (!strcmp(cmd, "priority"))
+    {
+        return run_schedule(&m, 3, 2, 1, NULL, NULL);
+    }
+
+    if (!strcmp(cmd, "rr"))
+    {
+        int q = 2;
+
+        if (arg)
+        {
+            char *end;
+            long v;
+
+            errno = 0;
+            v = strtol(arg, &end, 10);
+
+            if (errno || *end || v < 1 || v > INT_MAX)
+            {
+                fprintf(stderr, "Invalid quantum.\n");
+                return 1;
+            }
+
+            q = (int)v;
+        }
+
+        printf("Round Robin quantum: %d\n", q);
+
+        return run_schedule(&m, 2, q, 1, NULL, NULL);
+    }
+
+    if (!strcmp(cmd, "compare"))
+    {
+        comparison(&m, 2);
+        return 0;
+    }
+
+    if (!strcmp(cmd, "logger"))
+    {
+        return demo_logger();
+    }
+
+    if (!strcmp(cmd, "ipc"))
+    {
+        return demo_ipc();
+    }
+
+    if (!strcmp(cmd, "banker-safe"))
+    {
+        return demo_banker(1);
+    }
+
+    if (!strcmp(cmd, "banker-unsafe"))
+    {
+        return demo_banker(0);
+    }
+
+    if (!strcmp(cmd, "worker-ok"))
+    {
+        return demo_worker(0);
+    }
+
+    if (!strcmp(cmd, "worker-fail"))
+    {
+        return demo_worker(1);
+    }
+
+    if (!strcmp(cmd, "limit"))
+    {
+        return demo_limit();
+    }
+
+    if (!strcmp(cmd, "demo"))
+    {
+        int failed = 0;
+
+        puts("=== Integrated CampusCompute demo ===");
+
+        comparison(&m, 2);
+
+        failed |= demo_logger() != 0;
+        failed |= demo_ipc() != 0;
+        failed |= demo_banker(1) != 0;
+        failed |= demo_banker(0) != 0;
+        failed |= demo_worker(0) != 0;
+        failed |= demo_worker(1) != 0;
+        failed |= demo_limit() != 0;
+
+        printf("Integrated summary: %s\n",
+               failed
+                   ? "one or more demos failed"
+                   : "all demos returned success");
+
+        return failed;
+    }
+
+    return -99;
+}
+
+
+/* ============================================================
+   MAIN FUNCTION
+   ============================================================ */
+
+int main(int argc, char **argv)
+{
+    if (argc > 1)
+    {
+        if (!strcmp(argv[1], "help") ||
+            !strcmp(argv[1], "--help"))
+        {
+            usage(argv[0]);
+            return 0;
+        }
+
+        if (argc > 3 ||
+            (argc == 3 && strcmp(argv[1], "rr")))
+        {
+            usage(argv[0]);
+            return 2;
+        }
+
+        int rc = run_command(
+            argv[1],
+            argc == 3 ? argv[2] : NULL
+        );
+
+        if (rc == -99)
+        {
+            fprintf(stderr,
+                    "Unknown command: %s\n",
+                    argv[1]);
+
+            usage(argv[0]);
+            return 2;
+        }
+
+        return rc ? 1 : 0;
+    }
+
+    JobManager m;
+
+    initialize_job_manager(&m);
+
+    for (;;)
+    {
+        int c;
+
+        puts("\n=== CAMPUSCOMPUTE ===\n"
+             "1 Job management\n"
+             "2 CPU scheduling\n"
+             "3 Concurrent logger\n"
+             "4 Shared-memory IPC\n"
+             "5 Banker's safety algorithm\n"
+             "6 Worker monitoring\n"
+             "7 Resource limit\n"
+             "8 Integrated demo\n"
+             "0 Exit");
+
+        int rc = read_int("Choice: ", &c);
+
+        if (rc == -2)
+        {
+            puts("Input closed.");
+            break;
+        }
+
+        if (rc)
+        {
+            puts("Invalid integer.");
+            continue;
+        }
+
+        switch (c)
+        {
+            case 0:
+                return 0;
+
+            case 1:
+                jobs_menu(&m);
+                break;
+
+            case 2:
+                sched_menu(&m);
+                break;
+
+            case 3:
+                demo_logger();
+                break;
+
+            case 4:
+                demo_ipc();
+                break;
+
+            case 5:
+            {
+                int v;
+
+                if (read_int("1 Safe, 2 Unsafe: ", &v) == 0 &&
+                    (v == 1 || v == 2))
+                {
+                    demo_banker(v == 1);
+                }
+                else
+                {
+                    puts("Invalid selection.");
+                }
+
+                break;
+            }
+
+            case 6:
+            {
+                int v;
+
+                if (read_int("1 Normal, 2 Simulated failure: ", &v) == 0 &&
+                    (v == 1 || v == 2))
+                {
+                    demo_worker(v == 2);
+                }
+                else
+                {
+                    puts("Invalid selection.");
+                }
+
+                break;
+            }
+
+            case 7:
+                demo_limit();
+                break;
+
+            case 8:
+                run_command("demo", NULL);
+                break;
+
+            default:
+                puts("Invalid menu option.");
+        }
+    }
+
+    return 0;
+}
