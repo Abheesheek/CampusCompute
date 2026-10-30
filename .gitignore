@@ -1,0 +1,5 @@
+*.o
+campuscompute
+campuscompute.log
+*.zip
+.DS_Store
