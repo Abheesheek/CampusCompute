@@ -1,47 +1,48 @@
-Figure S01: Successful clean compilation of CampusCompute using GCC with C11, POSIX threading support, and compiler warning checks. All source modules compiled and linked without errors or warnings.
+No.	Screenshot caption
+01	Demonstrates the Ubuntu development environment, project working directory, and complete SRNs of both project members.
 
-Figure S02: CampusCompute command-line help interface displaying the available operating system demonstrations, including CPU scheduling, concurrent logging, inter-process communication, Banker's safety algorithm, worker monitoring, and resource-limit management.
+02	Confirms the availability of GCC and GNU Make required to compile and build the CampusCompute application.
 
-Figure S03: CampusCompute's interactive main menu providing access to job management, CPU scheduling, concurrent logging, shared-memory IPC, Banker's safety algorithm, worker monitoring, resource-limit management, and the integrated demonstration.
+03	Displays the modular CampusCompute project structure, including C source files, header files, automated tests, Makefile, and documentation.
 
-Figure S04: Job management functionality demonstrating successful creation and display of a job with ID 10, arrival time 0, burst time 5, priority 2, and initial status NEW.
+04	Demonstrates successful compilation of all CampusCompute source modules using GCC and the Makefile without compiler errors or warnings.
 
-Figure S05: Input validation in CampusCompute demonstrating rejection of duplicate job IDs and invalid CPU burst times, ensuring consistency and correctness of the job management system.
+05	Displays the CampusCompute command-line interface and the available commands for independently executing its operating-system demonstrations.
 
-Figure S06: First Come First Served (FCFS) CPU scheduling demonstration showing the execution timeline, completion times, turnaround times, waiting times, and average performance metrics for three sample jobs.
+06	Demonstrates First-Come, First-Served CPU scheduling with its execution timeline and calculated performance metrics.
 
-Figure S07: Round Robin CPU scheduling with a time quantum of 2 units, demonstrating preemptive execution, process rotation, and calculation of waiting and turnaround times.
+07	Demonstrates Round Robin CPU scheduling with a time quantum of 2, including its execution timeline and performance metrics.
 
-Figure S08: Non-preemptive Priority CPU scheduling demonstrating process selection based on priority, execution timeline, completion times, and average waiting and turnaround metrics.
+08	Demonstrates non-preemptive Priority CPU scheduling and its calculated performance metrics.
 
-Figure S09: Comparative performance analysis of FCFS, Round Robin, and non-preemptive Priority scheduling algorithms using average waiting and turnaround times. The results demonstrate the effect of scheduling policies on the sample workload.
+09	Compares FCFS, Round Robin, and Priority scheduling using average waiting time and turnaround time.
 
-Figure S10: Concurrent producer–consumer logging using POSIX threads, mutex locks, and condition variables. The demonstration illustrates synchronized access to a shared bounded buffer and successful completion of concurrent logging operations.
+10	Demonstrates concurrent producer-consumer execution using POSIX threads, a bounded queue, and synchronized event logging.
 
-Figure S11: Verification of the concurrent producer–consumer logger showing 12 successfully consumed events recorded in campuscompute.log, confirming complete event logging.
+11	Demonstrates synchronized producer-consumer execution and orderly termination of both POSIX threads after all events are processed.
 
-Figure S12: Inter-process communication using POSIX shared memory and named semaphores. The child process writes a message into shared memory, which is read by the parent after synchronization, demonstrating successful communication between independent processes.
+12	Demonstrates inter-process communication using POSIX shared memory, with a child process writing data that the parent process reads.
 
-Figure S13: Verification of POSIX IPC resource cleanup after the shared-memory communication demonstration. The check confirms that no CampusCompute-named shared-memory or semaphore objects remain in /dev/shm/.
+13	Verifies that shared-memory and named semaphore resources are properly released after IPC execution.
 
-Figure S14: Banker's safety algorithm demonstrating a safe resource-allocation state with available resources [3, 3, 2] and a valid safe execution sequence P1 → P3 → P4 → P0 → P2, illustrating deadlock avoidance.
+14	Demonstrates the Banker's algorithm identifying a safe system state and calculating a valid safe sequence.
 
-Figure S15: Banker's safety algorithm demonstrating an unsafe resource-allocation state with no available resources and no complete safe execution sequence, illustrating the detection of potentially unsafe allocations.
+15	Demonstrates the Banker's algorithm identifying an unsafe system state in which no complete safe sequence can be found.
 
-Figure S16: Successful worker process execution and monitoring using fork() and waitpid(). The parent process detects normal child termination with exit status 0, demonstrating Linux process creation and lifecycle management.
+16	Demonstrates successful child process creation using fork and normal process termination detected by the parent using waitpid.
 
-Figure S17: Worker process failure detection using fork() and waitpid(). The child process simulates a failure by exiting with status 42, which is detected and reported by the parent process, demonstrating process monitoring and error handling.
+17	Demonstrates controlled worker failure and detection of the child's non-zero exit status by the parent using waitpid.
 
-Figure S18: Linux resource-limit management using getrlimit() and setrlimit(). CampusCompute reduces the soft file descriptor limit to 32 and demonstrates enforcement of the limit when additional file-opening attempts fail with EMFILE.
+18	Demonstrates Linux file-descriptor resource management using getrlimit and setrlimit, including enforcement of the configured limit.
 
-Figure S19: Integrated execution of CampusCompute's Operating Systems demonstrations, confirming successful operation of the combined scheduling, synchronization, inter-process communication, deadlock avoidance, process monitoring, and resource management modules.
+19	Demonstrates rejection of an unsupported command and the application's corresponding non-zero exit status.
 
-Figure S20: Automated validation of CampusCompute using the Makefile test target and Bash smoke-test script. All 13 test cases pass, verifying the project's major Operating Systems features and command-line error handling.
+20	Verifies orderly completion of threads and child processes, along with the release of IPC resources.
 
-Figure S21: Command-line input validation in CampusCompute demonstrating rejection of an invalid Round Robin time quantum of zero. The program returns exit status 1, confirming appropriate error handling.
+21	Demonstrates the integrated CampusCompute application executing its operating-system features in a combined run.
 
-Figure S22: Command-line error handling in CampusCompute demonstrating rejection of an unsupported command. The program returns exit status 2, confirming appropriate detection and reporting of invalid user input.
+22	Displays the generated campuscompute.log file containing the twelve consumed producer-consumer events.
 
-Figure S23: CampusCompute repository structure showing modular C source files, header files, Makefile-based build automation, Bash smoke tests, project documentation, and GitHub CODEOWNERS configuration for collaborative development.
+23	Displays the final source files, headers, Makefile, README, automated test script, and compiled executable.
 
-Figure S24: Final verification of CampusCompute following a clean rebuild and execution of the automated smoke-test suite. All 13 tests pass, and Git confirms that the main branch has a clean working tree, demonstrating project stability and submission readiness.
+24	Demonstrates creation of the project submission ZIP archive, its included source and build files, and successful archive integrity verification.
